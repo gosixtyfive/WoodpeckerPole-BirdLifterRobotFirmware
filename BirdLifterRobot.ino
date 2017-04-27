@@ -30,6 +30,16 @@
 
 #include "MotorUtility.h"
 
+//#define DEBUG
+
+#ifdef DEBUG 
+#define Sprintln(a) (Serial.println(a))
+#define Sprint(a) (Serial.print(a))
+#else
+#define Sprintln(a)
+#define Sprint(a)
+#endif
+
 /*
  * FACTORYRESET_ENABLE     Perform a factory reset when running this sketch
  *                         Enabling this will put your Bluefruit LE module
@@ -114,7 +124,7 @@ bool isRobotAtLowerLimit() {
  */
 
 void error(const __FlashStringHelper*err) {
-  Serial.println(err);
+  Sprintln(err);
   while (1);
 }
 
@@ -135,32 +145,32 @@ void DfuIrqHandle(void)
 void connected(void)
 {
   irq_event_available = false;
-  Serial.println( F("Connected") );
+  Sprintln( F("Connected") );
 }
 
 void disconnected(void)
 {
   irq_event_available = false;
-  Serial.println( F("Disconnected") );
+  Sprintln( F("Disconnected") );
 }
 
 void BleGattRX(int32_t chars_id, uint8_t data[], uint16_t len)
 {
   irq_event_available = false;
-  Serial.print( F("[BLE GATT RX] (" ) );
-  Serial.print(chars_id);
-  Serial.print(") - ");
-  //Serial.println();
+  Sprint( F("[BLE GATT RX] (" ) );
+  Sprint(chars_id);
+  Sprint(") - ");
+  //Sprintln();
   uint16_t i;
   for (i = 0; i < len; i++) {
-    Serial.print(data[i]);
-    Serial.print( F("-") );
+    Sprint(data[i]);
+    Sprint( F("-") );
   }
-  Serial.println();
+  Sprintln();
 
   // Ensure password bytes match or ignore
   if (!weakSecurityCheckPassed(data,len)) {
-    Serial.println("Bad Password");
+    Sprintln("Bad Password");
     return;
   }
 
@@ -169,19 +179,19 @@ void BleGattRX(int32_t chars_id, uint8_t data[], uint16_t len)
     motorOneController.executeCommand(motorCommand);
     motorTwoController.executeCommand(motorCommand);
     motorThreeController.executeCommand(motorCommand); 
-    Serial.print("Motor Control - ");
-    Serial.print(motorCommand.speed); 
-    Serial.print("  ");
-    Serial.print(motorCommand.direction);
-    Serial.print("\n");
+    Sprint("Motor Control - ");
+    Sprint(motorCommand.speed); 
+    Sprint("  ");
+    Sprint(motorCommand.direction);
+    Sprint("\n");
   } else if (chars_id == charid_latchPosition) {
     ServoPosition newPosition = newServoPosition(data, len);
     latchServo.write(newPosition.desiredPosition);
-    Serial.println("Latch Control");
+    Sprintln("Latch Control");
   } else if (chars_id == charid_launcherPosition) {
     ServoPosition newPosition = newServoPosition(data, len);
     launcherServo.write(newPosition.desiredPosition);
-    Serial.println("Launcher Control");
+    Sprintln("Launcher Control");
   }  
 }
 
@@ -191,35 +201,51 @@ void BleGattRX(int32_t chars_id, uint8_t data[], uint16_t len)
 
 void setup(void)
 {
+
+#ifdef DEBUG
   while (!Serial);  // required for Flora & Micro
   delay(500);
-
   Serial.begin(115200);
-  Serial.println(F("Steve the Maker Woodpecker Pole Robot Controller"));
-  Serial.println(F("------------------------------------------------"));
+#endif
+
+  delay(500);
+  
+  Sprintln(F("Steve the Maker Woodpecker Pole Robot Controller"));
+  Sprintln(F("------------------------------------------------"));
 
   pinMode(bleIRQ_D_Input_pin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(bleIRQ_D_Input_pin), DfuIrqHandle, FALLING);
 
   /* Initialise the module */
-  Serial.print(F("Initialising the Bluefruit LE module: "));
+  Sprint(F("Initialising the Bluefruit LE module: "));
 
-  if ( !ble.begin(VERBOSE_MODE) )
+#ifdef DEBUG
+#define VERBOSE_MODE_LOCAL true
+#else 
+#define VERBOSE_MODE_LOCAL false
+#endif
+
+  if ( !ble.begin(VERBOSE_MODE_LOCAL) )
   {
     error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
   }
-  Serial.println( F("OK!") );
+  Sprintln( F("OK!") );
+
+#ifdef DEBUG
+  Sprintln(F("Existing GATT"));
+  ble.sendCommandCheckOK( F("AT+GATTLIST") );
+#endif 
 
   if ( FACTORYRESET_ENABLE )
   {
     /* Perform a factory reset to make sure everything is in a known state */
-    Serial.println(F("Performing a factory reset: "));
+    Sprintln(F("Performing a factory reset: "));
     if ( ! ble.factoryReset() ) {
       error(F("Couldn't factory reset"));
     }
-  }
-
-  Serial.println( F("Adding Robot Control Service with five characteristics") );
+  
+  
+  Sprintln( F("Adding Robot Control Service with five characteristics") );
 
   gatt.addService(robotControlServiceIdentifer);
   charid_batteryVoltage = gatt.addCharacteristic(batteryVoltage, GATT_CHARS_PROPERTIES_READ, 2, 2, BLE_DATATYPE_BYTEARRAY, "battery voltage");
@@ -228,22 +254,31 @@ void setup(void)
   charid_latchPosition = gatt.addCharacteristic(latchPosition, GATT_CHARS_PROPERTIES_WRITE | GATT_CHARS_PROPERTIES_READ, 3, 3, BLE_DATATYPE_BYTEARRAY, "latch position");
   charid_launcherPosition = gatt.addCharacteristic(launcherPosition, GATT_CHARS_PROPERTIES_WRITE | GATT_CHARS_PROPERTIES_READ, 3, 3, BLE_DATATYPE_BYTEARRAY, "launcher position");
 
+  }
   /* Set Robot Service advertising packet */
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-11-06-1E-BC-1B-06-8C-6A-2A-B0-A0-49-57-27-4B-60-00-C7") );
 
+  
   /* Reset the device for the new service setting changes to take effect */
-  Serial.print(F("Performing a SW reset (service changes require a reset): "));
+  Sprint(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
-  /* Disable command echo from Bluefruit */
-  ble.echo(false);
+#ifdef DEBUG
+  Sprintln(F("Existing GATT"));
+  ble.sendCommandCheckOK( F("AT+GATTLIST") );
+#endif 
 
-  Serial.println("Requesting Bluefruit info:");
+  /* Disable command echo from Bluefruit */
+  ble.echo(VERBOSE_MODE_LOCAL);
+
+#ifdef DEBUG
+  Sprintln("Requesting Bluefruit info:");
   /* Print Bluefruit information */
   ble.info();
+#endif
 
   /* Change DFU Pin to IRQ mode */
-  Serial.println( F("Change DFU Pin to IRQ Mode") );
+  Sprintln( F("Change DFU Pin to IRQ Mode") );
   ble.sendCommandCheckOK( F("AT+DFUIRQ=on") );
 
   /* Set callbacks */
@@ -379,7 +414,7 @@ void loop(void)
    
   if (irq_event_available) {
     // Registered callbacks for the event will be fired accordingly
-    Serial.println("Dfu");
+    // Sprintln("Dfu");
     ble.handleDfuIrq();
   }
 
@@ -388,14 +423,14 @@ void loop(void)
    */
 
   if (isRobotAtUpperLimit()) {
-    Serial.println("Upper Limit Stop");
+    Sprintln("Upper Limit Stop");
   }
   motorOneController.setAtUpperLimit(isRobotAtUpperLimit());
   motorTwoController.setAtUpperLimit(isRobotAtUpperLimit());
   motorThreeController.setAtUpperLimit(isRobotAtUpperLimit()); 
   
   if (isRobotAtLowerLimit()) {
-    Serial.println("Upper Limit Stop");
+    Sprintln("Upper Limit Stop");
   }
   motorOneController.setAtLowerLimit(isRobotAtLowerLimit());
   motorTwoController.setAtLowerLimit(isRobotAtLowerLimit());

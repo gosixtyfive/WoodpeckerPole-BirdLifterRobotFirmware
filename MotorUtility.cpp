@@ -15,13 +15,13 @@
     switch (motorCommand.direction) {
       case UP:
         if (!isAtUpperLimit) {
-          motor->run(FORWARD);
+          motor->run(BACKWARD);
         }
         break;
       case DOWN:
       Serial.println("trying down");
         if (!isAtLowerLimit) {
-          motor->run(BACKWARD);
+          motor->run(FORWARD);
         }
         break;
       default:

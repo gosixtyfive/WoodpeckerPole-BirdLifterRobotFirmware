@@ -1,31 +1,46 @@
 #import "MotorUtility.h"
 
-  MotorController::MotorController(Adafruit_DCMotor *motor_in) {
-    motor = motor_in;
+  MotorController::MotorController(int enable, int dir_a, int dir_b) {
+    enable_pin = enable;
+    direction_a_pin = dir_a;
+    direction_b_pin = dir_b;
     time_to_run_ms = 0;
     timer_ticks_ms = 0;
     isAtUpperLimit = false;
     isAtLowerLimit = false;
+    isGoingUp = false;
+    isGoingDown = false;
   }
 
    void MotorController::executeCommand(MotorPosition motorCommand) {
-    motor->run(RELEASE);
-    motor->setSpeed((int)motorCommand.speed); 
-    Serial.println((int)motorCommand.speed);
+    digitalWrite(enable_pin, LOW);
     switch (motorCommand.direction) {
       case UP:
         if (!isAtUpperLimit) {
-          motor->run(BACKWARD);
+          isGoingUp = true;
+          isGoingDown = false;
+          digitalWrite(direction_a_pin, HIGH);
+          digitalWrite(direction_b_pin, LOW);
+          digitalWrite(enable_pin, HIGH);
         }
         break;
       case DOWN:
       Serial.println("trying down");
         if (!isAtLowerLimit) {
-          motor->run(FORWARD);
+          isGoingUp = false;
+          isGoingDown = true;
+          digitalWrite(direction_a_pin, LOW);
+          digitalWrite(direction_b_pin, HIGH);
+          digitalWrite(enable_pin, HIGH);
+
         }
         break;
       default:
-        motor->run(RELEASE);
+        digitalWrite(direction_a_pin, LOW);
+        digitalWrite(direction_b_pin, LOW);
+        digitalWrite(enable_pin, LOW);
+        isGoingUp = false;
+        isGoingDown = false;
     }
     
     if (motorCommand.autostop) {
@@ -38,8 +53,11 @@
   }
 
   void MotorController::stop() {
-    motor->run(RELEASE);
-    motor->setSpeed(0);
+    digitalWrite(direction_a_pin, LOW);
+    digitalWrite(direction_b_pin, LOW);
+    digitalWrite(enable_pin, LOW);
+    isGoingUp = false;
+    isGoingDown = false;
   }
 
   void MotorController::update() {
@@ -55,14 +73,14 @@
 
   void MotorController::setAtUpperLimit(bool isAtLimit) {
     isAtUpperLimit = isAtLimit;
-    if (isAtLimit) {
+    if (isAtLimit & !isGoingDown) {
       stop();
     }
   }
   
   void MotorController::setAtLowerLimit(bool isAtLimit) {
     isAtLowerLimit = isAtLimit;
-    if (isAtLimit) {
+    if (isAtLimit & !isGoingUp) {
       stop();
     }
   }

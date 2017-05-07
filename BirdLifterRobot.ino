@@ -23,9 +23,6 @@
 #include "BluefruitConfig.h"
 
 #include <Wire.h>
-#include <Adafruit_MotorShield.h>
-#include "utility/Adafruit_MS_PWMServoDriver.h"
-
 #include <Servo.h>
 
 #include "MotorUtility.h"
@@ -67,6 +64,10 @@ const int redLED_D_Output_pin = 13;
 const int limitSwitchTop_D_Input_pin = 18;
 const int limitSwitchBottom_D_Input_pin = 19;
 
+const int motorEnable_D_Output_pin = 10;
+const int motorDirA_D_Output_pin = 11;
+const int motorDirB_D_Output_pin = 12;
+
 /*
  * BLE UUIDs
  */
@@ -85,14 +86,7 @@ uint8_t launcherPosition[16] = {0x43, 0x4D, 0x07, 0x8D, 0x79, 0x03, 0x44, 0xD0, 
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 Adafruit_BLEGatt gatt(ble);
 
-Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
-Adafruit_DCMotor *motorOne = AFMS.getMotor(1);
-Adafruit_DCMotor *motorTwo = AFMS.getMotor(2);
-Adafruit_DCMotor *motorThree = AFMS.getMotor(3);
-
-MotorController motorOneController = MotorController(motorOne);
-MotorController motorTwoController = MotorController(motorTwo);
-MotorController motorThreeController = MotorController(motorThree);
+MotorController triMotorController = MotorController(motorEnable_D_Output_pin, motorDirA_D_Output_pin, motorDirB_D_Output_pin);
 
 Servo latchServo;
 Servo launcherServo;
@@ -176,9 +170,7 @@ void BleGattRX(int32_t chars_id, uint8_t data[], uint16_t len)
 
   if (chars_id == charid_motorControl) {
     MotorPosition motorCommand = newMotorPosition(data, len);
-    motorOneController.executeCommand(motorCommand);
-    motorTwoController.executeCommand(motorCommand);
-    motorThreeController.executeCommand(motorCommand); 
+    triMotorController.executeCommand(motorCommand);
     Sprint("Motor Control - ");
     Sprint(motorCommand.speed); 
     Sprint("  ");
@@ -310,11 +302,12 @@ void setup(void)
 /*
  * Motor Init - Zero speed, disconnected
  */
-  AFMS.begin(100);  //Start motor with frequency of 100Hz (default is 1.6KHz)
-  motorOneController.stop();
-  motorTwoController.stop();
-  motorThreeController.stop();
-  
+
+  pinMode(motorEnable_D_Output_pin, OUTPUT);
+  pinMode(motorDirA_D_Output_pin, OUTPUT);
+  pinMode(motorDirB_D_Output_pin, OUTPUT);
+
+  triMotorController.stop();
    
 /*
  * Servo setup
@@ -386,9 +379,7 @@ void TCC0_Handler() {
   //  digitalWrite(redLED_D_Output_pin, HIGH); // for debug leds
 
   // Call Timer based stuff here
-    motorOneController.update();
-    motorTwoController.update();
-    motorThreeController.update();
+    triMotorController.update();
 
     TC->INTFLAG.bit.OVF = 1;    // writing a one clears the flag ovf flag
     irq_ovf_count++;                 // for debug leds
@@ -425,15 +416,11 @@ void loop(void)
   if (isRobotAtUpperLimit()) {
     Sprintln("Upper Limit Stop");
   }
-  motorOneController.setAtUpperLimit(isRobotAtUpperLimit());
-  motorTwoController.setAtUpperLimit(isRobotAtUpperLimit());
-  motorThreeController.setAtUpperLimit(isRobotAtUpperLimit()); 
+  triMotorController.setAtUpperLimit(isRobotAtUpperLimit()); 
   
   if (isRobotAtLowerLimit()) {
     Sprintln("Upper Limit Stop");
   }
-  motorOneController.setAtLowerLimit(isRobotAtLowerLimit());
-  motorTwoController.setAtLowerLimit(isRobotAtLowerLimit());
-  motorThreeController.setAtLowerLimit(isRobotAtLowerLimit()); 
+  triMotorController.setAtLowerLimit(isRobotAtLowerLimit()); 
   
 }

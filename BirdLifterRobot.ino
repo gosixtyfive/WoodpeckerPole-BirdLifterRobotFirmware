@@ -320,9 +320,9 @@ void setup(void)
  * Servo setup
  */
  
-  latchServo.write(0);
+  latchServo.write(90);
   latchServo.attach(latchServo_D_Output_pin);
-  launcherServo.write(0);
+  launcherServo.write(90);
   launcherServo.attach(launcherServo_D_Output_pin);
 
 /*

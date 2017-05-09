@@ -240,7 +240,7 @@ void setup(void)
   Sprintln( F("Adding Robot Control Service with five characteristics") );
 
   gatt.addService(robotControlServiceIdentifer);
-  charid_batteryVoltage = gatt.addCharacteristic(batteryVoltage, GATT_CHARS_PROPERTIES_READ, 2, 2, BLE_DATATYPE_BYTEARRAY, "battery voltage");
+  charid_batteryVoltage = gatt.addCharacteristic(batteryVoltage, GATT_CHARS_PROPERTIES_READ, 4, 4, BLE_DATATYPE_BYTEARRAY, "battery voltage");
   charid_robotPosition = gatt.addCharacteristic(robotPosition, GATT_CHARS_PROPERTIES_READ, 2, 2, BLE_DATATYPE_BYTEARRAY, "robot position");
   charid_motorControl = gatt.addCharacteristic(motorControl, GATT_CHARS_PROPERTIES_WRITE | GATT_CHARS_PROPERTIES_READ, 5, 5, BLE_DATATYPE_BYTEARRAY, "motor control");
   charid_latchPosition = gatt.addCharacteristic(latchPosition, GATT_CHARS_PROPERTIES_WRITE | GATT_CHARS_PROPERTIES_READ, 3, 3, BLE_DATATYPE_BYTEARRAY, "latch position");
@@ -317,6 +317,13 @@ void setup(void)
   latchServo.attach(latchServo_D_Output_pin);
   launcherServo.write(90);
   launcherServo.attach(launcherServo_D_Output_pin);
+
+/*
+ * Analog Battery Monitors
+ */
+
+ pinMode(processorVoltage_A_Input_pin, INPUT);
+ pinMode(motorVoltage_A_Input_pin, INPUT);
 
 /*
  * Timers for multitasking/timing
@@ -422,5 +429,10 @@ void loop(void)
     Sprintln("Upper Limit Stop");
   }
   triMotorController.setAtLowerLimit(isRobotAtLowerLimit()); 
+
+  int processorVoltage = analogRead(processorVoltage_A_Input_pin);
+  int motorVoltage = analogRead(motorVoltage_A_Input_pin);
+  uint32_t battery = (uint16_t)motorVoltage << 16 | (uint16_t)processorVoltage;
+  gatt.setChar(charid_batteryVoltage,battery);
   
 }

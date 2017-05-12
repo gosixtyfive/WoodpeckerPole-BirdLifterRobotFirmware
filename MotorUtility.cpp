@@ -10,10 +10,22 @@
     isAtLowerLimit = false;
     isGoingUp = false;
     isGoingDown = false;
+    isAutostopActive = false;
   }
 
    void MotorController::executeCommand(MotorPosition motorCommand) {
     digitalWrite(enable_pin, LOW);
+
+     if (motorCommand.autostop) {
+      timer_ticks_ms = 0;
+      time_to_run_ms = 2000;
+      isAutostopActive = true;
+    } else {
+      time_to_run_ms = 0;
+      timer_ticks_ms = 0;
+      isAutostopActive = false;
+    }
+    
     switch (motorCommand.direction) {
       case UP:
         if (!isAtUpperLimit) {
@@ -26,36 +38,30 @@
         break;
       case DOWN:
       Serial.println("trying down");
-        if (!isAtLowerLimit) {
+        if (!isAtLowerLimit | isAutostopActive) {
           isGoingUp = false;
           isGoingDown = true;
           digitalWrite(direction_a_pin, LOW);
           digitalWrite(direction_b_pin, HIGH);
           digitalWrite(enable_pin, HIGH);
-
         }
         break;
       default:
         digitalWrite(direction_a_pin, LOW);
         digitalWrite(direction_b_pin, LOW);
-        digitalWrite(enable_pin, LOW);
+        digitalWrite(enable_pin, HIGH);
         isGoingUp = false;
         isGoingDown = false;
     }
     
-    if (motorCommand.autostop) {
-      timer_ticks_ms = 0;
-      time_to_run_ms = 2000;
-    } else {
-      time_to_run_ms = 0;
-    }
+   
     
   }
 
   void MotorController::stop() {
     digitalWrite(direction_a_pin, LOW);
     digitalWrite(direction_b_pin, LOW);
-    digitalWrite(enable_pin, LOW);
+    digitalWrite(enable_pin, HIGH);
     isGoingUp = false;
     isGoingDown = false;
   }
@@ -68,19 +74,20 @@
       stop();
       time_to_run_ms = 0;
       timer_ticks_ms = 0;
+      isAutostopActive = false;
     }
   }
 
   void MotorController::setAtUpperLimit(bool isAtLimit) {
     isAtUpperLimit = isAtLimit;
-    if (isAtLimit & !isGoingDown) {
+    if (isAtLimit & !isGoingDown ) {
       stop();
     }
   }
   
   void MotorController::setAtLowerLimit(bool isAtLimit) {
     isAtLowerLimit = isAtLimit;
-    if (isAtLimit & !isGoingUp) {
+    if (isAtLimit & !isGoingUp & !isAutostopActive) {
       stop();
     }
   }

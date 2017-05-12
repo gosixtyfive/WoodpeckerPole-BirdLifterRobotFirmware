@@ -12,6 +12,7 @@ class MotorController {
   bool isAtLowerLimit;
   bool isGoingUp;
   bool isGoingDown;
+  bool isAutostopActive;
   
   public:
   MotorController(int enable, int dir_a, int dir_b);

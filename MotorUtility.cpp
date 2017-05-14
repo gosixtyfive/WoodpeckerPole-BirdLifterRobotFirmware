@@ -49,7 +49,7 @@
       default:
         digitalWrite(direction_a_pin, LOW);
         digitalWrite(direction_b_pin, LOW);
-        digitalWrite(enable_pin, HIGH);
+        digitalWrite(enable_pin, LOW);
         isGoingUp = false;
         isGoingDown = false;
     }
@@ -61,7 +61,7 @@
   void MotorController::stop() {
     digitalWrite(direction_a_pin, LOW);
     digitalWrite(direction_b_pin, LOW);
-    digitalWrite(enable_pin, HIGH);
+    digitalWrite(enable_pin, LOW);
     isGoingUp = false;
     isGoingDown = false;
   }
